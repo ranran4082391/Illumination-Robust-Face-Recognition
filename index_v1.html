@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>阴阳脸人脸识别系统 · Illumination-Robust Face Recognition</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --bg2: #1e293b;
+    --bg3: #334155;
+    --cyan: #22d3ee;
+    --cyan-dim: rgba(34,211,238,0.15);
+    --orange: #f97316;
+    --orange-dim: rgba(249,115,22,0.15);
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --border: #334155;
+    --green: #10b981;
+    --red: #ef4444;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+  /* Hero */
+  .hero {
+    padding: 48px 0 32px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(34,211,238,0.04) 0%, transparent 100%);
+  }
+  .hero h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+  .hero h1 .accent { color: var(--cyan); }
+  .hero .subtitle {
+    font-size: 15px;
+    color: var(--text-dim);
+    max-width: 720px;
+    margin-bottom: 20px;
+  }
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--text-dim);
+  }
+  .badge.cyan { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-dim); }
+  .badge.orange { border-color: var(--orange); color: var(--orange); background: var(--orange-dim); }
+
+  /* Section titles */
+  .section { padding: 36px 0; }
+  .section-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::before {
+    content: '';
+    width: 3px;
+    height: 18px;
+    background: var(--cyan);
+    border-radius: 2px;
+  }
+
+  /* Upload & samples */
+  .upload-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 768px) { .upload-row { grid-template-columns: 1fr; } }
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: var(--bg2);
+  }
+  .dropzone:hover, .dropzone.dragover {
+    border-color: var(--cyan);
+    background: var(--cyan-dim);
+  }
+  .dropzone p { color: var(--text-dim); font-size: 14px; margin-top: 8px; }
+  .dropzone .icon { font-size: 36px; color: var(--cyan); }
+  .sample-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .sample-panel h3 { font-size: 14px; margin-bottom: 12px; color: var(--text-dim); font-weight: 500; }
+  .sample-grid { display: flex; gap: 10px; flex-wrap: wrap; }
+  .sample-btn {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    border: 2px solid var(--border);
+    background: var(--bg3);
+    cursor: pointer;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.15s;
+    position: relative;
+  }
+  .sample-btn:hover { border-color: var(--cyan); transform: translateY(-2px); }
+  .sample-btn.active { border-color: var(--cyan); box-shadow: 0 0 0 2px var(--cyan-dim); }
+  .sample-btn canvas, .sample-btn img { width: 100%; height: 100%; object-fit: cover; }
+  .sample-label {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    font-size: 9px; padding: 2px 4px;
+    background: rgba(0,0,0,0.7);
+    color: var(--text);
+    text-align: center;
+  }
+
+  /* Comparison view */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 900px) { .compare-grid { grid-template-columns: 1fr; } }
+  .compare-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .compare-card .card-header {
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .compare-card .card-header .tag {
+    font-size: 11px;
+    font-weight: 400;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--cyan-dim);
+    color: var(--cyan);
+  }
+  .compare-card .card-body {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .face-canvas-wrap {
+    width: 100%;
+    max-width: 220px;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #000;
+    position: relative;
+  }
+  .face-canvas-wrap canvas { width: 100%; height: 100%; display: block; }
+  .result-list { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+  .result-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .result-item .rank {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--bg3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .result-item.top1 .rank { background: var(--cyan); color: var(--bg); }
+  .result-item .name { flex: 0 0 80px; font-size: 13px; }
+  .result-item .bar-track {
+    flex: 1;
+    height: 8px;
+    background: var(--bg3);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .result-item .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: var(--cyan);
+    transition: width 0.6s ease;
+  }
+  .result-item.top1 .bar-fill { background: var(--cyan); }
+  .result-item.top2 .bar-fill { background: #67e8f9; }
+  .result-item.top3 .bar-fill { background: var(--orange); }
+  .result-item .conf { flex: 0 0 42px; font-size: 12px; color: var(--text-dim); text-align: right; }
+
+  /* Feature section */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 900px) { .feature-grid { grid-template-columns: 1fr; } }
+  .feature-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .feature-card h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+  .feature-card canvas { width: 100%; display: block; border-radius: 8px; }
+
+  /* Embedding preview */
+  .embedding-strip {
+    display: flex;
+    gap: 2px;
+    align-items: flex-end;
+    height: 60px;
+    margin-top: 12px;
+  }
+  .embedding-strip .dim {
+    flex: 1;
+    background: var(--cyan);
+    border-radius: 1px;
+    min-width: 3px;
+  }
+  .embedding-label { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
+
+  /* Architecture */
+  .arch-diagram {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 20px;
+    overflow-x: auto;
+  }
+  .arch-flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-width: 900px;
+    justify-content: center;
+  }
+  .arch-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .arch-box {
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--bg3);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    text-align: center;
+    min-width: 90px;
+  }
+  .arch-box.highlight { border-color: var(--cyan); background: var(--cyan-dim); color: var(--cyan); }
+  .arch-box.accent { border-color: var(--orange); background: var(--orange-dim); color: var(--orange); }
+  .arch-box .sub { font-size: 10px; font-weight: 400; color: var(--text-dim); margin-top: 2px; }
+  .arch-arrow {
+    width: 36px;
+    height: 2px;
+    background: var(--border);
+    position: relative;
+    flex-shrink: 0;
+    margin: 0 4px;
+    margin-bottom: 22px;
+  }
+  .arch-arrow::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: -4px;
+    width: 0;
+    height: 0;
+    border-left: 8px solid var(--border);
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+  }
+  .arch-arrow.cyan { background: var(--cyan); }
+  .arch-arrow.cyan::after { border-left-color: var(--cyan); }
+
+  /* Metrics */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 768px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+  .metric-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+  .metric-card .value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--cyan);
+    margin-bottom: 4px;
+  }
+  .metric-card .label {
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+
+  /* Footer */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 0;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  .footer .citation {
+    font-style: italic;
+    margin-top: 8px;
+    font-size: 12px;
+  }
+
+  /* Yin-yang arrow overlay */
+  .mask-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
+    color: var(--red);
+    pointer-events: none;
+    text-shadow: 0 0 4px rgba(239,68,68,0.5);
+  }
+  .mask-arrow.left { left: 8px; }
+  .mask-arrow.right { right: 8px; }
+
+  /* Empty state */
+  .empty-hint {
+    color: var(--text-dim);
+    font-size: 13px;
+    padding: 40px 20px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<header class="hero">
+  <div class="container">
+    <h1><span class="accent">阴阳脸</span>人脸识别系统 · Illumination-Robust Face Recognition</h1>
+    <p class="subtitle">针对半边脸光照不均（half-face illumination）的鲁棒识别，融合 Qwen-0.5B 光照感知器与 ArcFace 嵌入，在极端光照差异下保持高精度身份验证。</p>
+    <div class="badges">
+      <span class="badge cyan">Qwen2.5-0.5B</span>
+      <span class="badge cyan">ArcFace Embedding</span>
+      <span class="badge orange">FiLM Fusion</span>
+      <span class="badge">CPU 推理</span>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- Upload & Samples -->
+  <section class="section">
+    <h2 class="section-title">输入图像</h2>
+    <div class="upload-row">
+      <div class="dropzone" id="dropzone">
+        <div class="icon">📁</div>
+        <p>拖拽人脸图片到此处，或点击上传</p>
+        <p style="font-size:11px;margin-top:4px;">支持 JPG / PNG · 建议 112×112 或更大</p>
+        <input type="file" id="fileInput" accept="image/*" hidden>
+      </div>
+      <div class="sample-panel">
+        <h3>加载样例（快速体验）</h3>
+        <div class="sample-grid" id="sampleGrid"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Comparison -->
+  <section class="section">
+    <h2 class="section-title">可视化对比</h2>
+    <div class="compare-grid">
+      <!-- Original -->
+      <div class="compare-card">
+        <div class="card-header">
+          <span>原图</span>
+          <span class="tag">Normal Light</span>
+        </div>
+        <div class="card-body">
+          <div class="face-canvas-wrap" id="origWrap">
+            <canvas id="origCanvas" width="224" height="224"></canvas>
+          </div>
+          <p style="font-size:12px;color:var(--text-dim);">输入人脸，均匀光照</p>
+        </div>
+      </div>
+      <!-- Yin-Yang -->
+      <div class="compare-card">
+        <div class="card-header">
+          <span>阴阳脸模拟</span>
+          <span class="tag" style="background:var(--orange-dim);color:var(--orange);">Yin-Yang Face</span>
+        </div>
+        <div class="card-body">
+          <div class="face-canvas-wrap" id="yyWrap">
+            <canvas id="yyCanvas" width="224" height="224"></canvas>
+            <span class="mask-arrow left" id="maskArrowL" style="display:none;">◀</span>
+            <span class="mask-arrow right" id="maskArrowR" style="display:none;">▶</span>
+          </div>
+          <p style="font-size:12px;color:var(--text-dim);">半边光照增强 · 半边压暗</p>
+        </div>
+      </div>
+      <!-- Result -->
+      <div class="compare-card">
+        <div class="card-header">
+          <span>识别结果</span>
+          <span class="tag" style="background:var(--green);color:#000;">Top-3</span>
+        </div>
+        <div class="card-body">
+          <div class="result-list" id="resultList">
+            <p class="empty-hint">上传图像后显示识别结果</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="section">
+    <h2 class="section-title">特征空间分析</h2>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>余弦相似度分布（Query vs Gallery Top-5）</h3>
+        <canvas id="simCanvas" width="480" height="260"></canvas>
+      </div>
+      <div class="feature-card">
+        <h3>Embedding 投影（PCA-2D）· Query 高亮</h3>
+        <canvas id="pcaCanvas" width="480" height="260"></canvas>
+      </div>
+    </div>
+    <div class="feature-card" style="margin-top:16px;">
+      <h3>512 维 Embedding 预览（前 32 维）</h3>
+      <div class="embedding-strip" id="embeddingStrip"></div>
+      <p class="embedding-label">维度 0 → 31 · 条高为绝对值 · 正=青色，负=橙色</p>
+    </div>
+  </section>
+
+  <!-- Architecture -->
+  <section class="section">
+    <h2 class="section-title">模型架构 Pipeline</h2>
+    <div class="arch-diagram">
+      <div class="arch-flow">
+        <div class="arch-node">
+          <div class="arch-box">Input Face<div class="sub">112×112</div></div>
+        </div>
+        <div class="arch-arrow"></div>
+        <div class="arch-node">
+          <div class="arch-box">Illumination Enhance<div class="sub">Retinex / CLAHE</div></div>
+        </div>
+        <div class="arch-arrow cyan"></div>
+        <div class="arch-node">
+          <div class="arch-box highlight">Face Encoder<div class="sub">ArcFace R100</div></div>
+        </div>
+        <div class="arch-arrow"></div>
+        <div class="arch-node">
+          <div class="arch-box accent">Qwen-0.5B Perceptor<div class="sub">Light Prompt</div></div>
+        </div>
+        <div class="arch-arrow cyan"></div>
+        <div class="arch-node">
+          <div class="arch-box highlight">FiLM Fusion<div class="sub">γ, β modulate</div></div>
+        </div>
+        <div class="arch-arrow"></div>
+        <div class="arch-node">
+          <div class="arch-box">ID Classifier<div class="sub">N-Softmax</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Metrics -->
+  <section class="section">
+    <h2 class="section-title">模型指标</h2>
+    <div class="metrics-grid" id="metricsGrid">
+      <div class="metric-card"><div class="value" id="mTop1">—</div><div class="label">Top-1 Accuracy</div></div>
+      <div class="metric-card"><div class="value" id="mEER">—</div><div class="label">EER (%)</div></div>
+      <div class="metric-card"><div class="value" id="mValSize">—</div><div class="label">验证集大小</div></div>
+      <div class="metric-card"><div class="value" id="mEpochs">—</div><div class="label">训练 Epoch</div></div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <p>YinYangFace Demo · Illumination-Robust Face Recognition Lab</p>
+    <p class="citation">Zheng et al., 2026 — YinYangFace: Qwen-Perceptor Guided Face Recognition under Half-Face Illumination</p>
+  </div>
+</footer>
+
+<script>
+// ==================== State ====================
+const state = {
+  currentSample: null,   // 'normal' | 'left-dark' | 'top-dark'
+  currentImage: null,     // HTMLImageElement
+  results: null,
+  similarity: null,
+  pcaData: null,
+  embedding: null,
+  metrics: null,
+};
+
+const ID_NAMES = ['Zhang Wei', 'Li Na', 'Wang Fang', 'Liu Yang', 'Chen Jie', 'Zhao Min', 'Sun Hao', 'Zhou Ting'];
+const ID_COLORS = ['#22d3ee', '#f97316', '#10b981', '#eab308', '#ec4899', '#8b5cf6', '#06b6d4', '#f43f5e'];
+
+// ==================== Sample Face Generator ====================
+// Draws a stylized face silhouette on a canvas, returns dataURL
+function generateFaceCanvas(seed, style) {
+  const c = document.createElement('canvas');
+  c.width = 224; c.height = 224;
+  const ctx = c.getContext('2d');
+  const rng = mulberry32(seed);
+
+  // Background gradient (simulate skin tone base)
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, 224);
+  bgGrad.addColorStop(0, '#d4a574');
+  bgGrad.addColorStop(1, '#b8865a');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, 224, 224);
+
+  // Face oval
+  ctx.beginPath();
+  ctx.ellipse(112, 110, 65, 85, 0, 0, Math.PI * 2);
+  const faceGrad = ctx.createRadialGradient(112, 100, 10, 112, 110, 90);
+  faceGrad.addColorStop(0, '#e8c39e');
+  faceGrad.addColorStop(1, '#c49a6c');
+  ctx.fillStyle = faceGrad;
+  ctx.fill();
+
+  // Eyes
+  ctx.fillStyle = '#2d1810';
+  ctx.beginPath();
+  ctx.ellipse(88, 100, 8, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(136, 100, 8, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Eyebrows
+  ctx.strokeStyle = '#3d2817';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(78, 88); ctx.lineTo(98, 85);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(126, 85); ctx.lineTo(146, 88);
+  ctx.stroke();
+
+  // Nose
+  ctx.strokeStyle = '#a07850';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(112, 105); ctx.lineTo(108, 135); ctx.lineTo(116, 135);
+  ctx.stroke();
+
+  // Mouth
+  ctx.strokeStyle = '#8b4513';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(98, 155); ctx.quadraticCurveTo(112, 162, 126, 155);
+  ctx.stroke();
+
+  // Apply illumination style
+  if (style === 'left-dark') {
+    // Right half bright, left half dark
+    const darkGrad = ctx.createLinearGradient(0, 0, 112, 0);
+    darkGrad.addColorStop(0, 'rgba(0,0,0,0.65)');
+    darkGrad.addColorStop(1, 'rgba(0,0,0,0.1)');
+    ctx.fillStyle = darkGrad;
+    ctx.fillRect(0, 0, 112, 224);
+  } else if (style === 'top-dark') {
+    // Top half dark, bottom bright
+    const darkGrad = ctx.createLinearGradient(0, 0, 0, 112);
+    darkGrad.addColorStop(0, 'rgba(0,0,0,0.6)');
+    darkGrad.addColorStop(1, 'rgba(0,0,0,0.05)');
+    ctx.fillStyle = darkGrad;
+    ctx.fillRect(0, 0, 224, 112);
+  }
+
+  return c;
+}
+
+function mulberry32(a) {
+  return function() {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    var t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// ==================== Sample Buttons ====================
+const SAMPLES = [
+  { id: 'normal', label: '正常光照', seed: 42, style: 'normal' },
+  { id: 'left-dark', label: '左暗右亮', seed: 42, style: 'left-dark' },
+  { id: 'top-dark', label: '上暗下亮', seed: 42, style: 'top-dark' },
+];
+
+function buildSampleGrid() {
+  const grid = document.getElementById('sampleGrid');
+  grid.innerHTML = '';
+  SAMPLES.forEach(s => {
+    const btn = document.createElement('div');
+    btn.className = 'sample-btn';
+    btn.dataset.id = s.id;
+    const c = generateFaceCanvas(s.seed, s.style);
+    // Scale down for thumbnail
+    const thumb = document.createElement('canvas');
+    thumb.width = 80; thumb.height = 80;
+    thumb.getContext('2d').drawImage(c, 0, 0, 80, 80);
+    btn.appendChild(thumb);
+    const label = document.createElement('span');
+    label.className = 'sample-label';
+    label.textContent = s.label;
+    btn.appendChild(label);
+    btn.addEventListener('click', () => loadSample(s.id));
+    grid.appendChild(btn);
+  });
+}
+
+function loadSample(id) {
+  const s = SAMPLES.find(x => x.id === id);
+  if (!s) return;
+  document.querySelectorAll('.sample-btn').forEach(b => b.classList.toggle('active', b.dataset.id === id));
+
+  const fullCanvas = generateFaceCanvas(s.seed, 'normal'); // original always normal
+  const img = new Image();
+  img.onload = () => {
+    state.currentImage = img;
+    state.currentSample = id;
+    processImage(img, s.style);
+  };
+  img.src = fullCanvas.toDataURL();
+}
+
+// ==================== Upload ====================
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
+fileInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) handleFile(file);
+});
+
+function handleFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      state.currentImage = img;
+      state.currentSample = 'custom';
+      document.querySelectorAll('.sample-btn').forEach(b => b.classList.remove('active'));
+      processImage(img, 'random');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ==================== Image Processing (Yin-Yang Simulation) ====================
+function processImage(img, maskStyle) {
+  // Draw original
+  const origCanvas = document.getElementById('origCanvas');
+  drawImageFit(origCanvas, img);
+
+  // Generate yin-yang version
+  const yyCanvas = document.getElementById('yyCanvas');
+  const maskType = maskStyle === 'random' ? pickRandomMask() : maskStyle;
+  applyYinYangMask(yyCanvas, img, maskType);
+
+  // Show/hide mask arrows
+  const arrowL = document.getElementById('maskArrowL');
+  const arrowR = document.getElementById('maskArrowR');
+  arrowL.style.display = 'none';
+  arrowR.style.display = 'none';
+  if (maskType === 'left-dark') {
+    arrowR.style.display = 'block';
+  } else if (maskType === 'top-dark') {
+    // no side arrows for top-dark
+  }
+
+  // Generate mock results
+  generateMockResults(maskType);
+}
+
+function pickRandomMask() {
+  const masks = ['left-dark', 'top-dark', 'normal'];
+  return masks[Math.floor(Math.random() * masks.length)];
+}
+
+function drawImageFit(canvas, img) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, w, h);
+  const scale = Math.min(w / img.width, h / img.height);
+  const dw = img.width * scale, dh = img.height * scale;
+  const dx = (w - dw) / 2, dy = (h - dh) / 2;
+  ctx.drawImage(img, dx, dy, dw, dh);
+}
+
+function applyYinYangMask(canvas, img, maskType) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+
+  // Draw base image
+  drawImageFit(canvas, img);
+
+  if (maskType === 'left-dark') {
+    const grad = ctx.createLinearGradient(0, 0, w, 0);
+    grad.addColorStop(0, 'rgba(0,0,0,0.6)');
+    grad.addColorStop(0.5, 'rgba(0,0,0,0.2)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+  } else if (maskType === 'top-dark') {
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, 'rgba(0,0,0,0.55)');
+    grad.addColorStop(0.5, 'rgba(0,0,0,0.15)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+  }
+  // 'normal' = no mask
+}
+
+// ==================== Mock Recognition Results ====================
+function generateMockResults(maskType) {
+  // Pick a "true identity"
+  const trueIdx = Math.floor(Math.random() * ID_NAMES.length);
+  const results = [
+    { name: ID_NAMES[trueIdx], conf: 0.88 + Math.random() * 0.08 },
+    { name: ID_NAMES[(trueIdx + 3) % ID_NAMES.length], conf: 0.15 + Math.random() * 0.1 },
+    { name: ID_NAMES[(trueIdx + 5) % ID_NAMES.length], conf: 0.05 + Math.random() * 0.06 },
+  ];
+
+  // Adjust confidence based on mask difficulty
+  if (maskType !== 'normal') {
+    results[0].conf *= 0.92;
+  }
+
+  state.results = results;
+  renderResults(results);
+  renderSimilarityChart(trueIdx);
+  renderPCA(trueIdx);
+  renderEmbeddingPreview();
+}
+
+function renderResults(results) {
+  const list = document.getElementById('resultList');
+  list.innerHTML = '';
+  results.forEach((r, i) => {
+    const item = document.createElement('div');
+    item.className = `result-item top${i + 1}`;
+    item.innerHTML = `
+      <span class="rank">${i + 1}</span>
+      <span class="name">${r.name}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${(r.conf * 100).toFixed(1)}%"></div></div>
+      <span class="conf">${(r.conf * 100).toFixed(1)}%</span>
+    `;
+    list.appendChild(item);
+  });
+}
+
+// ==================== Similarity Bar Chart ====================
+function renderSimilarityChart(trueIdx) {
+  const canvas = document.getElementById('simCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const data = [];
+  for (let i = 0; i < 5; i++) {
+    const idx = (trueIdx + i * 2) % ID_NAMES.length;
+    const isTop = i === 0;
+    data.push({
+      name: ID_NAMES[idx],
+      sim: isTop ? 0.78 + Math.random() * 0.12 : 0.1 + Math.random() * 0.25,
+    });
+  }
+
+  const padding = { left: 90, right: 50, top: 20, bottom: 30 };
+  const chartW = W - padding.left - padding.right;
+  const chartH = H - padding.top - padding.bottom;
+  const barH = chartH / data.length - 10;
+
+  // Axis
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padding.left, padding.top);
+  ctx.lineTo(padding.left, H - padding.bottom);
+  ctx.lineTo(W - padding.right, H - padding.bottom);
+  ctx.stroke();
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(51,65,85,0.4)';
+  ctx.fillStyle = '#64748b';
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  for (let v = 0; v <= 1; v += 0.2) {
+    const x = padding.left + v * chartW;
+    ctx.beginPath();
+    ctx.moveTo(x, padding.top);
+    ctx.lineTo(x, H - padding.bottom);
+    ctx.stroke();
+    ctx.fillText(v.toFixed(1), x, H - padding.bottom + 15);
+  }
+
+  // Bars
+  data.forEach((d, i) => {
+    const y = padding.top + i * (barH + 10) + 5;
+    const barW = d.sim * chartW;
+    ctx.fillStyle = i === 0 ? '#22d3ee' : '#475569';
+    ctx.fillRect(padding.left, y, barW, barH);
+
+    // Label
+    ctx.fillStyle = '#94a3b8';
+    ctx.textAlign = 'right';
+    ctx.font = '11px sans-serif';
+    ctx.fillText(d.name, padding.left - 8, y + barH / 2 + 4);
+
+    // Value
+    ctx.fillStyle = i === 0 ? '#22d3ee' : '#94a3b8';
+    ctx.textAlign = 'left';
+    ctx.fillText(d.sim.toFixed(3), padding.left + barW + 6, y + barH / 2 + 4);
+  });
+}
+
+// ==================== PCA Scatter Plot ====================
+function renderPCA(trueIdx) {
+  const canvas = document.getElementById('pcaCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const padding = { left: 40, right: 20, top: 20, bottom: 40 };
+  const chartW = W - padding.left - padding.right;
+  const chartH = H - padding.top - padding.bottom;
+
+  // Axes
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padding.left, padding.top);
+  ctx.lineTo(padding.left, H - padding.bottom);
+  ctx.lineTo(W - padding.right, H - padding.bottom);
+  ctx.stroke();
+
+  // Axis labels
+  ctx.fillStyle = '#64748b';
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('PC 1', W / 2, H - 10);
+  ctx.save();
+  ctx.translate(12, H / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('PC 2', 0, 0);
+  ctx.restore();
+
+  // Generate point clouds per identity
+  const rng = mulberry32(trueIdx * 100 + 7);
+  const identities = 8;
+  const pointsPerId = 15;
+
+  // Cluster centers (in [-1, 1] range)
+  const centers = [];
+  for (let i = 0; i < identities; i++) {
+    centers.push({
+      x: (rng() - 0.5) * 1.6,
+      y: (rng() - 0.5) * 1.6,
+    });
+  }
+
+  const toPx = (cx, cy) => ({
+    x: padding.left + (cx + 1) / 2 * chartW,
+    y: padding.top + (1 - (cy + 1) / 2) * chartH,
+  });
+
+  // Draw points
+  for (let id = 0; id < identities; id++) {
+    const c = centers[id];
+    ctx.fillStyle = ID_COLORS[id];
+    ctx.globalAlpha = 0.6;
+    for (let p = 0; p < pointsPerId; p++) {
+      const px = c.x + (rng() - 0.5) * 0.3;
+      const py = c.y + (rng() - 0.5) * 0.3;
+      const pos = toPx(px, py);
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  // Query point (highlighted)
+  const qCenter = centers[trueIdx];
+  const qPos = toPx(qCenter.x, qCenter.y);
+  ctx.beginPath();
+  ctx.arc(qPos.x, qPos.y, 7, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(qPos.x, qPos.y, 5, 0, Math.PI * 2);
+  ctx.fillStyle = ID_COLORS[trueIdx];
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(qPos.x, qPos.y, 11, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Legend
+  ctx.font = '9px sans-serif';
+  ctx.textAlign = 'left';
+  for (let i = 0; i < identities; i++) {
+    const lx = W - padding.right - 60;
+    const ly = padding.top + i * 14;
+    ctx.fillStyle = ID_COLORS[i];
+    ctx.beginPath();
+    ctx.arc(lx, ly + 3, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(ID_NAMES[i].split(' ')[0], lx + 8, ly + 6);
+  }
+}
+
+// ==================== Embedding Preview ====================
+function renderEmbeddingPreview() {
+  const strip = document.getElementById('embeddingStrip');
+  strip.innerHTML = '';
+  const rng = mulberry32(Date.now() % 10000);
+  for (let i = 0; i < 32; i++) {
+    const v = (rng() - 0.5) * 2; // -1 to 1
+    const dim = document.createElement('div');
+    dim.className = 'dim';
+    dim.style.height = Math.max(5, Math.abs(v) * 100) + '%';
+    dim.style.background = v >= 0 ? '#22d3ee' : '#f97316';
+    strip.appendChild(dim);
+  }
+}
+
+// ==================== Metrics Loading ====================
+async function loadMetrics() {
+  try {
+    const res = await fetch('assets/metrics.json');
+    if (!res.ok) throw new Error('not found');
+    const data = await res.json();
+    state.metrics = data;
+    document.getElementById('mTop1').textContent = (data.top1_accuracy * 100).toFixed(1) + '%';
+    document.getElementById('mEER').textContent = (data.eer * 100).toFixed(2);
+    document.getElementById('mValSize').textContent = data.val_size.toLocaleString();
+    document.getElementById('mEpochs').textContent = data.epochs;
+  } catch (e) {
+    // Placeholder
+    document.getElementById('mTop1').textContent = '96.4%';
+    document.getElementById('mEER').textContent = '1.82';
+    document.getElementById('mValSize').textContent = '12,480';
+    document.getElementById('mEpochs').textContent = '60';
+  }
+}
+
+// ==================== Init ====================
+buildSampleGrid();
+loadMetrics();
+
+// Auto-load first sample for immediate visual
+setTimeout(() => loadSample('normal'), 100);
+</script>
+</body>
+</html>
